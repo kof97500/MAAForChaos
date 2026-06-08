@@ -7,6 +7,7 @@ from czn_automation.runtime.context import RunContext
 from czn_automation.runtime.logger import setup_logger
 from czn_automation.runtime.progress import ProgressReporter
 from czn_automation.window.attach import GameWindowService
+from czn_automation.window.screenshot import WindowScreenshotService
 
 
 def main() -> int:
@@ -41,7 +42,33 @@ def main() -> int:
             detail=attach_result.summary(),
         )
         context.logger.info("窗口连接流程完成：%s", attach_result.summary())
-        return 0
+
+        screenshot_service = WindowScreenshotService(context)
+        context.progress.update(
+            stage="截图验证",
+            step="保存首张窗口截图",
+            status="进行中",
+            detail="窗口已连接，开始抓取客户区截图",
+        )
+        capture_result = screenshot_service.capture_to_debug_file(attach_result.window)
+        if capture_result.success:
+            context.progress.update(
+                stage="截图验证",
+                step="保存首张窗口截图",
+                status="成功",
+                detail=capture_result.summary(),
+            )
+            context.logger.info("截图验证完成：%s", capture_result.summary())
+            return 0
+
+        context.progress.update(
+            stage="截图验证",
+            step="保存首张窗口截图",
+            status="失败",
+            detail=capture_result.summary(),
+        )
+        context.logger.warning("截图验证失败：%s", capture_result.summary())
+        return 1
 
     context.progress.update(
         stage="窗口连接",
