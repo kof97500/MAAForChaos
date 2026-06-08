@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.pyc
+*.pyo
+*.log
+
+debug/logs/*
+!debug/logs/.gitkeep
+debug/screenshots/*
+!debug/screenshots/.gitkeep

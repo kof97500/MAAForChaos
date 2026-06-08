@@ -1,0 +1,22 @@
+{
+  "app": {
+    "name": "czn-automation",
+    "environment": "development"
+  },
+  "game_window": {
+    "title_keywords": [
+      "卡厄思梦境",
+      "Chaos Zero Nightmare"
+    ],
+    "supported_resolutions": [
+      {
+        "width": 1600,
+        "height": 900
+      }
+    ]
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "debug/logs/app.log"
+  }
+}
