@@ -4,6 +4,7 @@ from pathlib import Path
 
 from czn_automation.config import load_config
 from czn_automation.runtime.context import RunContext
+from czn_automation.runtime.dpi import enable_dpi_awareness
 from czn_automation.runtime.logger import setup_logger
 from czn_automation.runtime.progress import ProgressReporter
 from czn_automation.window.attach import GameWindowService
@@ -24,11 +25,13 @@ def main() -> int:
     context = RunContext(root_dir=root_dir, logger=logger, progress=progress, config=config)
 
     context.logger.info("程序启动")
+    dpi_mode = enable_dpi_awareness()
+    context.logger.info("DPI 感知模式：%s", dpi_mode)
     context.progress.update(
         stage="初始化",
         step="加载配置与运行上下文",
         status="进行中",
-        detail=f"environment={config.environment}",
+        detail=f"environment={config.environment}, dpi={dpi_mode}",
     )
 
     window_service = GameWindowService(context)

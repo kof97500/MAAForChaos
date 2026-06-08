@@ -18,6 +18,7 @@ class WindowInfo:
     height: int
     visible: bool
     minimized: bool
+    dpi: int = 0
 
     def matches_keyword(self, keyword: str) -> bool:
         return keyword.casefold() in self.title.casefold()
@@ -26,7 +27,7 @@ class WindowInfo:
         return (
             f"hwnd={self.hwnd} title={self.title!r} "
             f"pos=({self.left},{self.top}) size={self.width}x{self.height} "
-            f"visible={self.visible} minimized={self.minimized}"
+            f"visible={self.visible} minimized={self.minimized} dpi={self.dpi}"
         )
 
 
@@ -181,6 +182,12 @@ class GameWindowService:
 
             width = rect.right - rect.left
             height = rect.bottom - rect.top
+            dpi = 0
+            if hasattr(user32, "GetDpiForWindow"):
+                try:
+                    dpi = int(user32.GetDpiForWindow(hwnd))
+                except Exception:
+                    dpi = 0
             windows.append(
                 WindowInfo(
                     hwnd=int(hwnd),
@@ -191,6 +198,7 @@ class GameWindowService:
                     height=height,
                     visible=True,
                     minimized=False,
+                    dpi=dpi,
                 )
             )
             return True

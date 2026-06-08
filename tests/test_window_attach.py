@@ -35,6 +35,7 @@ class GameWindowServiceTestCase(unittest.TestCase):
                 height=900,
                 visible=True,
                 minimized=False,
+                dpi=96,
             ),
             WindowInfo(
                 hwnd=1002,
@@ -45,6 +46,7 @@ class GameWindowServiceTestCase(unittest.TestCase):
                 height=1080,
                 visible=True,
                 minimized=False,
+                dpi=120,
             ),
         ]
 
@@ -64,6 +66,7 @@ class GameWindowServiceTestCase(unittest.TestCase):
                 height=900,
                 visible=True,
                 minimized=False,
+                dpi=96,
             )
         ]
 
