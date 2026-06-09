@@ -82,3 +82,58 @@ class TemplateWaiter:
             ),
             capture=last_capture,
         )
+
+    def wait_for_template_to_disappear(
+        self,
+        window: WindowInfo,
+        *,
+        template_path: Path,
+        search_region: SearchRegion,
+        threshold: float,
+        step: int,
+        timeout_ms: int,
+        poll_interval_ms: int,
+        screenshot_prefix: str,
+        log_prefix: str,
+    ) -> TemplateWaitResult:
+        deadline = time.time() + (timeout_ms / 1000)
+        attempt = 0
+        last_match = TemplateMatchResult(found=True, reason="尚未开始轮询")
+        last_capture: CaptureResult | None = None
+
+        while time.time() < deadline:
+            attempt += 1
+            filename = f"{screenshot_prefix}_{attempt:02d}.bmp"
+            capture = self.screenshot_service.capture_named_debug_file(window, filename)
+            last_capture = capture
+            if not capture.success or capture.path is None:
+                last_match = TemplateMatchResult(found=True, reason=capture.summary())
+                time.sleep(poll_interval_ms / 1000)
+                continue
+
+            match = self.matcher.find_in_image(
+                screenshot_path=capture.path,
+                template_path=template_path,
+                search_region=search_region,
+                threshold=threshold,
+                step=step,
+            )
+            self.context.logger.info("%s轮询 #%s: %s", log_prefix, attempt, match.summary())
+            if not match.found:
+                return TemplateWaitResult(
+                    found=True,
+                    match=TemplateMatchResult(found=True, reason="目标模板已消失"),
+                    capture=capture,
+                )
+
+            last_match = match
+            time.sleep(poll_interval_ms / 1000)
+
+        return TemplateWaitResult(
+            found=False,
+            match=TemplateMatchResult(
+                found=False,
+                reason=f"等待模板消失超时，最后结果：{last_match.summary()}",
+            ),
+            capture=last_capture,
+        )

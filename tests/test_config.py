@@ -16,3 +16,6 @@ class ConfigTestCase(unittest.TestCase):
         self.assertEqual(config.input_validation.template_path, "resources/templates/kariesi_entry.png")
         self.assertEqual(config.input_validation.search_region.left, 1600)
         self.assertEqual(config.input_validation.search_region.width, 320)
+        self.assertEqual(config.codex_flow.button_template_path, "resources/templates/codex_button.png")
+        self.assertEqual(config.codex_flow.page_template_path, "resources/templates/first_codex_entry.png")
+        self.assertEqual(config.team_setup.page_template_path, "resources/templates/team_config_page_header.png")

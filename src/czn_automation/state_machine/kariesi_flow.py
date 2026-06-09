@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 import time
 
+from czn_automation.config import SearchRegion
 from czn_automation.recognition.template_match import TemplateMatchResult, TemplateMatcher
 from czn_automation.runtime.context import RunContext
-from czn_automation.waiters.template_waiter import TemplateWaiter
+from czn_automation.waiters.template_waiter import TemplateWaitResult, TemplateWaiter
 from czn_automation.window.attach import AttachResult, GameWindowService, WindowInfo
 from czn_automation.window.input import ClickResult, WindowInputService
 from czn_automation.window.screenshot import CaptureResult, WindowScreenshotService
@@ -21,6 +23,17 @@ class KariesiState(Enum):
     DETECT_ZERO_SYSTEM_ENTRY = auto()
     CLICK_ZERO_SYSTEM_ENTRY = auto()
     WAIT_FOR_ZERO_SYSTEM_PAGE = auto()
+    DETECT_CODEX_BUTTON = auto()
+    CLICK_CODEX_BUTTON = auto()
+    WAIT_FOR_CODEX_PAGE = auto()
+    DETECT_FIRST_CODEX_ENTRY = auto()
+    CLICK_FIRST_CODEX_ENTRY = auto()
+    DETECT_CODEX_ENTER_BUTTON = auto()
+    CLICK_CODEX_ENTER_BUTTON = auto()
+    WAIT_FOR_TEAM_SETUP_PAGE = auto()
+    DETECT_TEAM_SETUP_ENTER_BUTTON = auto()
+    CLICK_TEAM_SETUP_ENTER_BUTTON = auto()
+    WAIT_FOR_ROGUELIKE_ENTRY = auto()
     SUCCESS = auto()
     FAILED = auto()
 
@@ -47,11 +60,13 @@ class KariesiEntryStateMachine:
         self.attach_result: AttachResult | None = None
         self.window: WindowInfo | None = None
         self.before_capture: CaptureResult | None = None
-        self.button_match: TemplateMatchResult | None = None
-        self.click_result: ClickResult | None = None
-        self.kariesi_page_capture: CaptureResult | None = None
-        self.zero_system_capture: CaptureResult | None = None
+        self.kariesi_match: TemplateMatchResult | None = None
         self.zero_system_match: TemplateMatchResult | None = None
+        self.codex_button_match: TemplateMatchResult | None = None
+        self.first_codex_match: TemplateMatchResult | None = None
+        self.codex_enter_match: TemplateMatchResult | None = None
+        self.team_setup_enter_match: TemplateMatchResult | None = None
+        self.click_result: ClickResult | None = None
 
     def run(self) -> KariesiFlowResult:
         while self.current_state not in (KariesiState.SUCCESS, KariesiState.FAILED):
@@ -74,6 +89,17 @@ class KariesiEntryStateMachine:
             KariesiState.DETECT_ZERO_SYSTEM_ENTRY: self._detect_zero_system_entry,
             KariesiState.CLICK_ZERO_SYSTEM_ENTRY: self._click_zero_system_entry,
             KariesiState.WAIT_FOR_ZERO_SYSTEM_PAGE: self._wait_for_zero_system_page,
+            KariesiState.DETECT_CODEX_BUTTON: self._detect_codex_button,
+            KariesiState.CLICK_CODEX_BUTTON: self._click_codex_button,
+            KariesiState.WAIT_FOR_CODEX_PAGE: self._wait_for_codex_page,
+            KariesiState.DETECT_FIRST_CODEX_ENTRY: self._detect_first_codex_entry,
+            KariesiState.CLICK_FIRST_CODEX_ENTRY: self._click_first_codex_entry,
+            KariesiState.DETECT_CODEX_ENTER_BUTTON: self._detect_codex_enter_button,
+            KariesiState.CLICK_CODEX_ENTER_BUTTON: self._click_codex_enter_button,
+            KariesiState.WAIT_FOR_TEAM_SETUP_PAGE: self._wait_for_team_setup_page,
+            KariesiState.DETECT_TEAM_SETUP_ENTER_BUTTON: self._detect_team_setup_enter_button,
+            KariesiState.CLICK_TEAM_SETUP_ENTER_BUTTON: self._click_team_setup_enter_button,
+            KariesiState.WAIT_FOR_ROGUELIKE_ENTRY: self._wait_for_roguelike_entry,
         }
         handler = handlers.get(state)
         if handler is None:
@@ -134,7 +160,6 @@ class KariesiEntryStateMachine:
             status="成功",
             detail=capture_result.summary(),
         )
-        self.context.logger.info("截图验证完成：%s", capture_result.summary())
         self.before_capture = self.screenshot_service.capture_named_debug_file(
             self.window,
             "before_input_click.bmp",
@@ -146,7 +171,6 @@ class KariesiEntryStateMachine:
                 status="失败",
                 detail=self.before_capture.summary(),
             )
-            self.context.logger.warning("保存点击前截图失败：%s", self.before_capture.summary())
             self.failure_reason = self.before_capture.summary()
             return KariesiState.FAILED
 
@@ -154,160 +178,117 @@ class KariesiEntryStateMachine:
 
     def _detect_kariesi_button(self) -> KariesiState:
         if self.before_capture is None or self.before_capture.path is None:
-            self.failure_reason = "点击前截图不可用，无法识别按钮"
+            self.failure_reason = "点击前截图不可用，无法识别卡厄思入口"
             return KariesiState.FAILED
 
-        template_path = self.context.root_dir / self.context.config.input_validation.template_path
+        config = self.context.config.input_validation
         self.context.progress.update(
             stage="按钮识别",
-            step="识别卡厄思图标按钮",
+            step="识别卡厄思入口",
             status="进行中",
-            detail=f"template={self.context.config.input_validation.template_path}",
+            detail=f"template={config.template_path}",
         )
-        match = self.matcher.find_in_image(
-            screenshot_path=self.before_capture.path,
-            template_path=template_path,
-            search_region=self.context.config.input_validation.search_region,
-            threshold=self.context.config.input_validation.match_threshold,
-            step=self.context.config.input_validation.search_step,
+        match = self._match_capture(
+            self.before_capture.path,
+            self.context.root_dir / config.template_path,
+            config.search_region,
+            config.match_threshold,
+            config.search_step,
         )
-        self.button_match = match
+        self.kariesi_match = match
         if not match.found:
-            self.context.progress.update(
+            return self._fail_with_progress(
                 stage="按钮识别",
-                step="识别卡厄思图标按钮",
-                status="失败",
-                detail=match.summary(),
+                step="识别卡厄思入口",
+                reason=match.summary(),
             )
-            self.context.logger.warning("按钮识别失败：%s", match.summary())
-            self.failure_reason = match.summary()
-            return KariesiState.FAILED
 
         self.context.progress.update(
             stage="按钮识别",
-            step="识别卡厄思图标按钮",
+            step="识别卡厄思入口",
             status="成功",
             detail=match.summary(),
         )
-        self.context.logger.info("按钮识别成功：%s", match.summary())
         return KariesiState.CLICK_KARIESI_BUTTON
 
     def _click_kariesi_button(self) -> KariesiState:
-        if self.window is None or self.button_match is None:
-            self.failure_reason = "窗口或按钮识别结果缺失，无法执行点击"
+        if self.window is None or self.kariesi_match is None:
+            self.failure_reason = "窗口或卡厄思入口识别结果缺失"
             return KariesiState.FAILED
 
-        self.context.progress.update(
+        click_result = self._click_match(
             stage="输入验证",
-            step="点击卡厄思图标按钮",
-            status="进行中",
-            detail=(
-                f"client=({self.button_match.center_x},{self.button_match.center_y}) "
-                f"score={self.button_match.score:.2f}"
-            ),
+            step="点击卡厄思入口",
+            window=self.window,
+            match=self.kariesi_match,
         )
-        click_result = self.input_service.click_client_point(
-            self.window,
-            self.button_match.center_x,
-            self.button_match.center_y,
-        )
-        self.click_result = click_result
         if not click_result.success:
-            self.context.progress.update(
+            return self._fail_with_progress(
                 stage="输入验证",
-                step="点击卡厄思图标按钮",
-                status="失败",
-                detail=click_result.summary(),
+                step="点击卡厄思入口",
+                reason=click_result.summary(),
             )
-            self.context.logger.warning("输入验证失败：%s", click_result.summary())
-            self.failure_reason = click_result.summary()
-            return KariesiState.FAILED
 
-        self.context.logger.info("输入验证点击完成：%s", click_result.summary())
         time.sleep(self.context.config.input_validation.post_click_wait_ms / 1000)
         return KariesiState.WAIT_FOR_KARIESI_PAGE
 
     def _wait_for_kariesi_page(self) -> KariesiState:
-        if self.window is None:
-            self.failure_reason = "窗口缺失，无法验证结果页面"
-            return KariesiState.FAILED
-
-        result = self._wait_for_success_page(self.window)
-        if result.found:
-            self.kariesi_page_capture = self.screenshot_service.capture_named_debug_file(
-                self.window,
-                "kariesi_page_ready.bmp",
-            )
-            self.context.progress.update(
+        result = self._wait_for_template(
+            stage="结果验证",
+            step="等待卡厄思页面稳定出现",
+            template_path=self.context.root_dir / self.context.config.input_validation.success_template_path,
+            search_region=self.context.config.input_validation.success_search_region,
+            threshold=self.context.config.input_validation.success_match_threshold,
+            step_size=1,
+            timeout_ms=self.context.config.input_validation.success_timeout_ms,
+            poll_interval_ms=self.context.config.input_validation.success_poll_interval_ms,
+            screenshot_prefix="after_input_click",
+            log_prefix="卡厄思结果验证",
+        )
+        if not result.found:
+            return self._fail_with_progress(
                 stage="结果验证",
                 step="等待卡厄思页面稳定出现",
-                status="成功",
-                detail=result.summary(),
+                reason=result.summary(),
             )
-            self.context.logger.info("结果验证成功：%s", result.summary())
-            return KariesiState.DETECT_ZERO_SYSTEM_ENTRY
 
+        self.screenshot_service.capture_named_debug_file(self.window, "kariesi_page_ready.bmp")
         self.context.progress.update(
             stage="结果验证",
             step="等待卡厄思页面稳定出现",
-            status="失败",
+            status="成功",
             detail=result.summary(),
         )
-        self.context.logger.warning("结果验证失败：%s", result.summary())
-        self.failure_reason = result.summary()
-        return KariesiState.FAILED
+        return KariesiState.DETECT_ZERO_SYSTEM_ENTRY
 
     def _detect_zero_system_entry(self) -> KariesiState:
-        if self.window is None:
-            self.failure_reason = "窗口缺失，无法识别零式系统入口"
-            return KariesiState.FAILED
-
         config = self.context.config.zero_system
-        template_path = self.context.root_dir / config.template_path
-        self.context.progress.update(
+        result = self._wait_for_template(
             stage="按钮识别",
             step="识别零式系统入口",
-            status="进行中",
-            detail=(
-                f"template={config.template_path} "
-                f"timeout={config.detect_timeout_ms}ms interval={config.detect_poll_interval_ms}ms"
-            ),
-        )
-        wait_result = self.template_waiter.wait_for_template(
-            self.window,
-            template_path=template_path,
+            template_path=self.context.root_dir / config.template_path,
             search_region=config.search_region,
             threshold=config.match_threshold,
-            step=config.search_step,
+            step_size=config.search_step,
             timeout_ms=config.detect_timeout_ms,
             poll_interval_ms=config.detect_poll_interval_ms,
             screenshot_prefix="before_zero_system_click",
             log_prefix="零式系统入口",
         )
-        self.zero_system_match = wait_result.match
-        self.zero_system_capture = wait_result.capture
-        if (
-            not wait_result.found
-            or self.zero_system_capture is None
-            or self.zero_system_capture.path is None
-        ):
-            self.failure_reason = wait_result.summary()
-            self.context.progress.update(
+        self.zero_system_match = result.match
+        if not result.found:
+            return self._fail_with_progress(
                 stage="按钮识别",
                 step="识别零式系统入口",
-                status="失败",
-                detail=wait_result.summary(),
+                reason=result.summary(),
             )
-            self.context.logger.warning("零式系统入口识别失败：%s", wait_result.summary())
-            return KariesiState.FAILED
 
         self.context.progress.update(
             stage="按钮识别",
             step="识别零式系统入口",
             status="成功",
-            detail=wait_result.summary(),
+            detail=result.summary(),
         )
-        self.context.logger.info("零式系统入口识别成功：%s", wait_result.summary())
         return KariesiState.CLICK_ZERO_SYSTEM_ENTRY
 
     def _click_zero_system_entry(self) -> KariesiState:
@@ -315,139 +296,445 @@ class KariesiEntryStateMachine:
             self.failure_reason = "窗口或零式系统入口识别结果缺失"
             return KariesiState.FAILED
 
-        self.context.progress.update(
+        click_result = self._click_match(
             stage="输入验证",
             step="点击零式系统入口",
-            status="进行中",
-            detail=(
-                f"client=({self.zero_system_match.center_x},{self.zero_system_match.center_y}) "
-                f"score={self.zero_system_match.score:.2f}"
-            ),
-        )
-        click_result = self.input_service.click_client_point(
-            self.window,
-            self.zero_system_match.center_x,
-            self.zero_system_match.center_y,
+            window=self.window,
+            match=self.zero_system_match,
         )
         if not click_result.success:
-            self.failure_reason = click_result.summary()
-            self.context.progress.update(
+            return self._fail_with_progress(
                 stage="输入验证",
                 step="点击零式系统入口",
-                status="失败",
-                detail=click_result.summary(),
+                reason=click_result.summary(),
             )
-            self.context.logger.warning("零式系统入口点击失败：%s", click_result.summary())
-            return KariesiState.FAILED
 
-        self.context.logger.info("零式系统入口点击完成：%s", click_result.summary())
         time.sleep(self.context.config.zero_system.post_click_wait_ms / 1000)
         return KariesiState.WAIT_FOR_ZERO_SYSTEM_PAGE
 
     def _wait_for_zero_system_page(self) -> KariesiState:
-        if self.window is None or self.zero_system_capture is None or self.zero_system_capture.path is None:
-            self.failure_reason = "缺少零式系统点击前基准截图"
-            return KariesiState.FAILED
-
-        result = self._wait_for_zero_system_page_success(self.window)
-        if result.found:
-            self.context.progress.update(
-                stage="结果验证",
-                step="等待零式系统页面稳定出现",
-                status="成功",
-                detail=result.summary(),
-            )
-            self.context.logger.info("零式系统页面验证成功：%s", result.summary())
-            return KariesiState.SUCCESS
-
-        self.failure_reason = result.summary()
-        self.context.progress.update(
+        config = self.context.config.zero_system
+        result = self._wait_for_template(
             stage="结果验证",
             step="等待零式系统页面稳定出现",
-            status="失败",
-            detail=result.summary(),
-        )
-        self.context.logger.warning("零式系统页面验证失败：%s", result.summary())
-        return KariesiState.FAILED
-
-    def _wait_for_zero_system_entry(self, template_path) -> TemplateMatchResult:
-        config = self.context.config.zero_system
-        deadline = time.time() + (config.detect_timeout_ms / 1000)
-        attempt = 0
-        last_result = TemplateMatchResult(found=False, reason="尚未开始轮询")
-
-        while time.time() < deadline:
-            attempt += 1
-            filename = f"before_zero_system_click_{attempt:02d}.bmp"
-            capture = self.screenshot_service.capture_named_debug_file(self.window, filename)
-            if not capture.success or capture.path is None:
-                last_result = TemplateMatchResult(found=False, reason=capture.summary())
-                time.sleep(config.detect_poll_interval_ms / 1000)
-                continue
-
-            result = self.matcher.find_in_image(
-                screenshot_path=capture.path,
-                template_path=template_path,
-                search_region=config.search_region,
-                threshold=config.match_threshold,
-                step=config.search_step,
-            )
-            self.context.logger.info("零式系统入口轮询 #%s: %s", attempt, result.summary())
-            if result.found:
-                self.zero_system_capture = capture
-                return result
-
-            last_result = result
-            time.sleep(config.detect_poll_interval_ms / 1000)
-
-        return TemplateMatchResult(
-            found=False,
-            reason=f"等待零式系统入口超时，最后结果：{last_result.summary()}",
-        )
-
-    def _wait_for_success_page(self, window: WindowInfo) -> TemplateMatchResult:
-        config = self.context.config.input_validation
-        template_path = self.context.root_dir / config.success_template_path
-
-        self.context.progress.update(
-            stage="结果验证",
-            step="等待卡厄思页面稳定出现",
-            status="进行中",
-            detail=f"timeout={config.success_timeout_ms}ms interval={config.success_poll_interval_ms}ms",
-        )
-        return self.template_waiter.wait_for_template(
-            window,
-            template_path=template_path,
+            template_path=self.context.root_dir / config.success_template_path,
             search_region=config.success_search_region,
             threshold=config.success_match_threshold,
-            step=1,
-            timeout_ms=config.success_timeout_ms,
-            poll_interval_ms=config.success_poll_interval_ms,
-            screenshot_prefix="after_input_click",
-            log_prefix="卡厄思结果验证",
-        ).match
-
-    def _wait_for_zero_system_page_success(self, window: WindowInfo) -> TemplateMatchResult:
-        config = self.context.config.zero_system
-        template_path = self.context.root_dir / config.success_template_path
-
-        self.context.progress.update(
-            stage="结果验证",
-            step="等待零式系统页面稳定出现",
-            status="进行中",
-            detail=(
-                f"timeout={config.success_timeout_ms}ms "
-                f"interval={config.success_poll_interval_ms}ms"
-            ),
-        )
-        return self.template_waiter.wait_for_template(
-            window,
-            template_path=template_path,
-            search_region=config.success_search_region,
-            threshold=config.success_match_threshold,
-            step=1,
+            step_size=1,
             timeout_ms=config.success_timeout_ms,
             poll_interval_ms=config.success_poll_interval_ms,
             screenshot_prefix="after_zero_system_click",
             log_prefix="零式系统结果验证",
-        ).match
+        )
+        if not result.found:
+            return self._fail_with_progress(
+                stage="结果验证",
+                step="等待零式系统页面稳定出现",
+                reason=result.summary(),
+            )
+
+        self.screenshot_service.capture_named_debug_file(self.window, "zero_system_page_ready.bmp")
+        self.context.progress.update(
+            stage="结果验证",
+            step="等待零式系统页面稳定出现",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.DETECT_CODEX_BUTTON
+
+    def _detect_codex_button(self) -> KariesiState:
+        config = self.context.config.codex_flow
+        result = self._wait_for_template(
+            stage="按钮识别",
+            step="识别法典按钮",
+            template_path=self.context.root_dir / config.button_template_path,
+            search_region=config.button_search_region,
+            threshold=config.button_match_threshold,
+            step_size=config.button_search_step,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="before_codex_button_click",
+            log_prefix="法典按钮",
+        )
+        self.codex_button_match = result.match
+        if not result.found:
+            return self._fail_with_progress(
+                stage="按钮识别",
+                step="识别法典按钮",
+                reason=result.summary(),
+            )
+
+        self.context.progress.update(
+            stage="按钮识别",
+            step="识别法典按钮",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.CLICK_CODEX_BUTTON
+
+    def _click_codex_button(self) -> KariesiState:
+        if self.window is None or self.codex_button_match is None:
+            self.failure_reason = "窗口或法典按钮识别结果缺失"
+            return KariesiState.FAILED
+
+        click_result = self._click_match(
+            stage="输入验证",
+            step="点击法典按钮",
+            window=self.window,
+            match=self.codex_button_match,
+        )
+        if not click_result.success:
+            return self._fail_with_progress(
+                stage="输入验证",
+                step="点击法典按钮",
+                reason=click_result.summary(),
+            )
+
+        time.sleep(self.context.config.codex_flow.post_click_wait_ms / 1000)
+        return KariesiState.WAIT_FOR_CODEX_PAGE
+
+    def _wait_for_codex_page(self) -> KariesiState:
+        config = self.context.config.codex_flow
+        result = self._wait_for_template(
+            stage="结果验证",
+            step="等待法典选择页面稳定出现",
+            template_path=self.context.root_dir / config.page_template_path,
+            search_region=config.page_search_region,
+            threshold=config.page_match_threshold,
+            step_size=2,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="after_codex_button_click",
+            log_prefix="法典页面验证",
+        )
+        if not result.found:
+            return self._fail_with_progress(
+                stage="结果验证",
+                step="等待法典选择页面稳定出现",
+                reason=result.summary(),
+            )
+
+        self.screenshot_service.capture_named_debug_file(self.window, "codex_page_ready.bmp")
+        self.context.progress.update(
+            stage="结果验证",
+            step="等待法典选择页面稳定出现",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.DETECT_FIRST_CODEX_ENTRY
+
+    def _detect_first_codex_entry(self) -> KariesiState:
+        config = self.context.config.codex_flow
+        result = self._wait_for_template(
+            stage="按钮识别",
+            step="识别第一个法典槽位",
+            template_path=self.context.root_dir / config.first_codex_template_path,
+            search_region=config.first_codex_search_region,
+            threshold=config.first_codex_match_threshold,
+            step_size=config.first_codex_search_step,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="before_first_codex_click",
+            log_prefix="法典01入口",
+        )
+        self.first_codex_match = result.match
+        if not result.found:
+            return self._fail_with_progress(
+                stage="按钮识别",
+                step="识别第一个法典槽位",
+                reason=result.summary(),
+            )
+
+        self.context.progress.update(
+            stage="按钮识别",
+            step="识别第一个法典槽位",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.CLICK_FIRST_CODEX_ENTRY
+
+    def _click_first_codex_entry(self) -> KariesiState:
+        if self.window is None or self.first_codex_match is None:
+            self.failure_reason = "窗口或第一个法典槽位识别结果缺失"
+            return KariesiState.FAILED
+
+        click_result = self._click_match(
+            stage="输入验证",
+            step="点击第一个法典槽位",
+            window=self.window,
+            match=self.first_codex_match,
+        )
+        if not click_result.success:
+            return self._fail_with_progress(
+                stage="输入验证",
+                step="点击第一个法典槽位",
+                reason=click_result.summary(),
+            )
+
+        time.sleep(self.context.config.codex_flow.post_click_wait_ms / 1000)
+        return KariesiState.DETECT_CODEX_ENTER_BUTTON
+
+    def _detect_codex_enter_button(self) -> KariesiState:
+        config = self.context.config.codex_flow
+        result = self._wait_for_template(
+            stage="按钮识别",
+            step="识别法典页面进入按钮",
+            template_path=self.context.root_dir / config.enter_button_template_path,
+            search_region=config.enter_button_search_region,
+            threshold=config.enter_button_match_threshold,
+            step_size=config.enter_button_search_step,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="before_codex_enter_click",
+            log_prefix="法典进入按钮",
+        )
+        self.codex_enter_match = result.match
+        if not result.found:
+            return self._fail_with_progress(
+                stage="按钮识别",
+                step="识别法典页面进入按钮",
+                reason=result.summary(),
+            )
+
+        self.context.progress.update(
+            stage="按钮识别",
+            step="识别法典页面进入按钮",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.CLICK_CODEX_ENTER_BUTTON
+
+    def _click_codex_enter_button(self) -> KariesiState:
+        if self.window is None or self.codex_enter_match is None:
+            self.failure_reason = "窗口或法典进入按钮识别结果缺失"
+            return KariesiState.FAILED
+
+        click_result = self._click_match(
+            stage="输入验证",
+            step="点击法典页面进入按钮",
+            window=self.window,
+            match=self.codex_enter_match,
+        )
+        if not click_result.success:
+            return self._fail_with_progress(
+                stage="输入验证",
+                step="点击法典页面进入按钮",
+                reason=click_result.summary(),
+            )
+
+        time.sleep(self.context.config.codex_flow.post_click_wait_ms / 1000)
+        return KariesiState.WAIT_FOR_TEAM_SETUP_PAGE
+
+    def _wait_for_team_setup_page(self) -> KariesiState:
+        config = self.context.config.team_setup
+        result = self._wait_for_template(
+            stage="结果验证",
+            step="等待配置队伍页面稳定出现",
+            template_path=self.context.root_dir / config.page_template_path,
+            search_region=config.page_search_region,
+            threshold=config.page_match_threshold,
+            step_size=1,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="after_codex_enter_click",
+            log_prefix="配置队伍页面验证",
+        )
+        if not result.found:
+            return self._fail_with_progress(
+                stage="结果验证",
+                step="等待配置队伍页面稳定出现",
+                reason=result.summary(),
+            )
+
+        self.screenshot_service.capture_named_debug_file(self.window, "team_setup_page_ready.bmp")
+        self.context.progress.update(
+            stage="结果验证",
+            step="等待配置队伍页面稳定出现",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.DETECT_TEAM_SETUP_ENTER_BUTTON
+
+    def _detect_team_setup_enter_button(self) -> KariesiState:
+        config = self.context.config.team_setup
+        result = self._wait_for_template(
+            stage="按钮识别",
+            step="识别配置队伍页面进入按钮",
+            template_path=self.context.root_dir / config.enter_button_template_path,
+            search_region=config.enter_button_search_region,
+            threshold=config.enter_button_match_threshold,
+            step_size=config.enter_button_search_step,
+            timeout_ms=config.page_timeout_ms,
+            poll_interval_ms=config.page_poll_interval_ms,
+            screenshot_prefix="before_team_setup_enter_click",
+            log_prefix="配置队伍进入按钮",
+        )
+        self.team_setup_enter_match = result.match
+        if not result.found:
+            return self._fail_with_progress(
+                stage="按钮识别",
+                step="识别配置队伍页面进入按钮",
+                reason=result.summary(),
+            )
+
+        self.context.progress.update(
+            stage="按钮识别",
+            step="识别配置队伍页面进入按钮",
+            status="成功",
+            detail=result.summary(),
+        )
+        return KariesiState.CLICK_TEAM_SETUP_ENTER_BUTTON
+
+    def _click_team_setup_enter_button(self) -> KariesiState:
+        if self.window is None or self.team_setup_enter_match is None:
+            self.failure_reason = "窗口或配置队伍进入按钮识别结果缺失"
+            return KariesiState.FAILED
+
+        click_result = self._click_match(
+            stage="输入验证",
+            step="点击配置队伍页面进入按钮",
+            window=self.window,
+            match=self.team_setup_enter_match,
+        )
+        if not click_result.success:
+            return self._fail_with_progress(
+                stage="输入验证",
+                step="点击配置队伍页面进入按钮",
+                reason=click_result.summary(),
+            )
+
+        time.sleep(self.context.config.team_setup.post_click_wait_ms / 1000)
+        return KariesiState.WAIT_FOR_ROGUELIKE_ENTRY
+
+    def _wait_for_roguelike_entry(self) -> KariesiState:
+        config = self.context.config.team_setup
+        if self.window is None:
+            self.failure_reason = "窗口缺失，无法等待进入肉鸽"
+            return KariesiState.FAILED
+
+        self.context.progress.update(
+            stage="结果验证",
+            step="等待离开配置队伍页面",
+            status="进行中",
+            detail=(
+                f"timeout={config.transition_timeout_ms}ms "
+                f"interval={config.transition_poll_interval_ms}ms"
+            ),
+        )
+        result = self.template_waiter.wait_for_template_to_disappear(
+            self.window,
+            template_path=self.context.root_dir / config.page_template_path,
+            search_region=config.page_search_region,
+            threshold=config.page_match_threshold,
+            step=1,
+            timeout_ms=config.transition_timeout_ms,
+            poll_interval_ms=config.transition_poll_interval_ms,
+            screenshot_prefix="after_team_setup_enter_click",
+            log_prefix="进入肉鸽验证",
+        )
+        if not result.found:
+            return self._fail_with_progress(
+                stage="结果验证",
+                step="等待离开配置队伍页面",
+                reason=result.summary(),
+            )
+
+        self.screenshot_service.capture_named_debug_file(self.window, "roguelike_entry_ready.bmp")
+        self.context.progress.update(
+            stage="结果验证",
+            step="等待离开配置队伍页面",
+            status="成功",
+            detail="配置队伍页头已消失，认为已进入肉鸽流程",
+        )
+        return KariesiState.SUCCESS
+
+    def _match_capture(
+        self,
+        screenshot_path: Path,
+        template_path: Path,
+        search_region: SearchRegion,
+        threshold: float,
+        step_size: int,
+    ) -> TemplateMatchResult:
+        return self.matcher.find_in_image(
+            screenshot_path=screenshot_path,
+            template_path=template_path,
+            search_region=search_region,
+            threshold=threshold,
+            step=step_size,
+        )
+
+    def _wait_for_template(
+        self,
+        *,
+        stage: str,
+        step: str,
+        template_path: Path,
+        search_region: SearchRegion,
+        threshold: float,
+        step_size: int,
+        timeout_ms: int,
+        poll_interval_ms: int,
+        screenshot_prefix: str,
+        log_prefix: str,
+    ) -> TemplateWaitResult:
+        if self.window is None:
+            return TemplateWaitResult(
+                found=False,
+                match=TemplateMatchResult(found=False, reason="窗口缺失，无法执行等待"),
+                capture=None,
+            )
+
+        self.context.progress.update(
+            stage=stage,
+            step=step,
+            status="进行中",
+            detail=f"timeout={timeout_ms}ms interval={poll_interval_ms}ms",
+        )
+        return self.template_waiter.wait_for_template(
+            self.window,
+            template_path=template_path,
+            search_region=search_region,
+            threshold=threshold,
+            step=step_size,
+            timeout_ms=timeout_ms,
+            poll_interval_ms=poll_interval_ms,
+            screenshot_prefix=screenshot_prefix,
+            log_prefix=log_prefix,
+        )
+
+    def _click_match(
+        self,
+        *,
+        stage: str,
+        step: str,
+        window: WindowInfo,
+        match: TemplateMatchResult,
+    ) -> ClickResult:
+        self.context.progress.update(
+            stage=stage,
+            step=step,
+            status="进行中",
+            detail=f"client=({match.center_x},{match.center_y}) score={match.score:.2f}",
+        )
+        click_result = self.input_service.click_client_point(
+            window,
+            match.center_x,
+            match.center_y,
+        )
+        self.click_result = click_result
+        if click_result.success:
+            self.context.logger.info("%s完成：%s", step, click_result.summary())
+            self.context.progress.update(
+                stage=stage,
+                step=step,
+                status="成功",
+                detail=click_result.summary(),
+            )
+        return click_result
+
+    def _fail_with_progress(self, *, stage: str, step: str, reason: str) -> KariesiState:
+        self.failure_reason = reason
+        self.context.progress.update(stage=stage, step=step, status="失败", detail=reason)
+        self.context.logger.warning("%s失败：%s", step, reason)
+        return KariesiState.FAILED

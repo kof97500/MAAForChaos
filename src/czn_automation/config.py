@@ -62,6 +62,44 @@ class ZeroSystemConfig:
 
 
 @dataclass
+class CodexFlowConfig:
+    button_template_path: str
+    button_search_region: SearchRegion
+    button_match_threshold: float
+    button_search_step: int
+    post_click_wait_ms: int
+    page_template_path: str
+    page_search_region: SearchRegion
+    page_match_threshold: float
+    page_timeout_ms: int
+    page_poll_interval_ms: int
+    first_codex_template_path: str
+    first_codex_search_region: SearchRegion
+    first_codex_match_threshold: float
+    first_codex_search_step: int
+    enter_button_template_path: str
+    enter_button_search_region: SearchRegion
+    enter_button_match_threshold: float
+    enter_button_search_step: int
+
+
+@dataclass
+class TeamSetupConfig:
+    page_template_path: str
+    page_search_region: SearchRegion
+    page_match_threshold: float
+    page_timeout_ms: int
+    page_poll_interval_ms: int
+    enter_button_template_path: str
+    enter_button_search_region: SearchRegion
+    enter_button_match_threshold: float
+    enter_button_search_step: int
+    post_click_wait_ms: int
+    transition_timeout_ms: int
+    transition_poll_interval_ms: int
+
+
+@dataclass
 class AppConfig:
     name: str
     environment: str
@@ -69,6 +107,8 @@ class AppConfig:
     logging: LoggingConfig
     input_validation: InputValidationConfig
     zero_system: ZeroSystemConfig
+    codex_flow: CodexFlowConfig
+    team_setup: TeamSetupConfig
 
 
 def load_config(path: Path) -> AppConfig:
@@ -134,5 +174,69 @@ def load_config(path: Path) -> AppConfig:
             success_match_threshold=float(data["zero_system"]["success_match_threshold"]),
             success_timeout_ms=int(data["zero_system"]["success_timeout_ms"]),
             success_poll_interval_ms=int(data["zero_system"]["success_poll_interval_ms"]),
+        ),
+        codex_flow=CodexFlowConfig(
+            button_template_path=data["codex_flow"]["button_template_path"],
+            button_search_region=SearchRegion(
+                left=data["codex_flow"]["button_search_region"]["left"],
+                top=data["codex_flow"]["button_search_region"]["top"],
+                width=data["codex_flow"]["button_search_region"]["width"],
+                height=data["codex_flow"]["button_search_region"]["height"],
+            ),
+            button_match_threshold=float(data["codex_flow"]["button_match_threshold"]),
+            button_search_step=int(data["codex_flow"]["button_search_step"]),
+            post_click_wait_ms=int(data["codex_flow"]["post_click_wait_ms"]),
+            page_template_path=data["codex_flow"]["page_template_path"],
+            page_search_region=SearchRegion(
+                left=data["codex_flow"]["page_search_region"]["left"],
+                top=data["codex_flow"]["page_search_region"]["top"],
+                width=data["codex_flow"]["page_search_region"]["width"],
+                height=data["codex_flow"]["page_search_region"]["height"],
+            ),
+            page_match_threshold=float(data["codex_flow"]["page_match_threshold"]),
+            page_timeout_ms=int(data["codex_flow"]["page_timeout_ms"]),
+            page_poll_interval_ms=int(data["codex_flow"]["page_poll_interval_ms"]),
+            first_codex_template_path=data["codex_flow"]["first_codex_template_path"],
+            first_codex_search_region=SearchRegion(
+                left=data["codex_flow"]["first_codex_search_region"]["left"],
+                top=data["codex_flow"]["first_codex_search_region"]["top"],
+                width=data["codex_flow"]["first_codex_search_region"]["width"],
+                height=data["codex_flow"]["first_codex_search_region"]["height"],
+            ),
+            first_codex_match_threshold=float(data["codex_flow"]["first_codex_match_threshold"]),
+            first_codex_search_step=int(data["codex_flow"]["first_codex_search_step"]),
+            enter_button_template_path=data["codex_flow"]["enter_button_template_path"],
+            enter_button_search_region=SearchRegion(
+                left=data["codex_flow"]["enter_button_search_region"]["left"],
+                top=data["codex_flow"]["enter_button_search_region"]["top"],
+                width=data["codex_flow"]["enter_button_search_region"]["width"],
+                height=data["codex_flow"]["enter_button_search_region"]["height"],
+            ),
+            enter_button_match_threshold=float(data["codex_flow"]["enter_button_match_threshold"]),
+            enter_button_search_step=int(data["codex_flow"]["enter_button_search_step"]),
+        ),
+        team_setup=TeamSetupConfig(
+            page_template_path=data["team_setup"]["page_template_path"],
+            page_search_region=SearchRegion(
+                left=data["team_setup"]["page_search_region"]["left"],
+                top=data["team_setup"]["page_search_region"]["top"],
+                width=data["team_setup"]["page_search_region"]["width"],
+                height=data["team_setup"]["page_search_region"]["height"],
+            ),
+            page_match_threshold=float(data["team_setup"]["page_match_threshold"]),
+            page_timeout_ms=int(data["team_setup"]["page_timeout_ms"]),
+            page_poll_interval_ms=int(data["team_setup"]["page_poll_interval_ms"]),
+            enter_button_template_path=data["team_setup"]["enter_button_template_path"],
+            enter_button_search_region=SearchRegion(
+                left=data["team_setup"]["enter_button_search_region"]["left"],
+                top=data["team_setup"]["enter_button_search_region"]["top"],
+                width=data["team_setup"]["enter_button_search_region"]["width"],
+                height=data["team_setup"]["enter_button_search_region"]["height"],
+            ),
+            enter_button_match_threshold=float(data["team_setup"]["enter_button_match_threshold"]),
+            enter_button_search_step=int(data["team_setup"]["enter_button_search_step"]),
+            post_click_wait_ms=int(data["team_setup"]["post_click_wait_ms"]),
+            transition_timeout_ms=int(data["team_setup"]["transition_timeout_ms"]),
+            transition_poll_interval_ms=int(data["team_setup"]["transition_poll_interval_ms"]),
         ),
     )
