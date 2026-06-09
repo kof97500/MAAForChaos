@@ -357,9 +357,9 @@ class EventDetector:
 
     def _estimate_event_button_rect(self, width: int, height: int) -> Rect:
         left = int(width * 0.0)
-        top = int(height * 0.18)
-        right = int(width * 0.28)
-        bottom = int(height * 0.39)
+        top = int(height * 0.205)
+        right = int(width * 0.11)
+        bottom = int(height * 0.365)
         return Rect(left=left, top=top, width=right - left, height=bottom - top)
 
     def _estimate_name_panel_rect(self, width: int, height: int) -> Rect:
