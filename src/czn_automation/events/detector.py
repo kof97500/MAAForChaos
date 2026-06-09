@@ -364,23 +364,23 @@ class EventDetector:
 
     def _estimate_name_panel_rect(self, width: int, height: int) -> Rect:
         left = int(width * 0.0)
-        top = int(height * 0.20)
+        top = int(height * 0.165)
         right = int(width * 0.28)
-        bottom = int(height * 0.36)
+        bottom = int(height * 0.325)
         return Rect(left=left, top=top, width=right - left, height=bottom - top)
 
     def _estimate_event_name_rect(self, width: int, height: int) -> Rect:
         left = int(width * 0.047)
-        top = int(height * 0.219)
+        top = int(height * 0.185)
         right = int(width * 0.255)
-        bottom = int(height * 0.273)
+        bottom = int(height * 0.238)
         return Rect(left=left, top=top, width=right - left, height=bottom - top)
 
     def _estimate_event_subtitle_rect(self, width: int, height: int) -> Rect:
         left = int(width * 0.047)
-        top = int(height * 0.268)
+        top = int(height * 0.238)
         right = int(width * 0.173)
-        bottom = int(height * 0.312)
+        bottom = int(height * 0.286)
         return Rect(left=left, top=top, width=right - left, height=bottom - top)
 
     def _split_option_rect(self, rect: Rect) -> tuple[Rect, Rect]:
