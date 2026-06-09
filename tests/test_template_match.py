@@ -11,16 +11,16 @@ class TemplateMatcherTestCase(unittest.TestCase):
         matcher = TemplateMatcher()
         result = matcher.find_in_image(
             screenshot_path=Path("/private/tmp/czn_click_ref.png"),
-            template_path=root_dir / "resources" / "templates" / "kariesi_icon.png",
-            search_region=SearchRegion(left=1660, top=410, width=220, height=140),
-            threshold=18.0,
+            template_path=root_dir / "resources" / "templates" / "kariesi_entry.png",
+            search_region=SearchRegion(left=1600, top=390, width=320, height=220),
+            threshold=25.0,
             step=2,
         )
 
         self.assertTrue(result.found, result.summary())
         self.assertLessEqual(result.score, 1.0)
-        self.assertEqual(result.left, 1778)
-        self.assertEqual(result.top, 426)
+        self.assertEqual(result.left, 1650)
+        self.assertEqual(result.top, 420)
 
     def test_match_kariesi_page_header_template(self) -> None:
         root_dir = Path(__file__).resolve().parents[1]
