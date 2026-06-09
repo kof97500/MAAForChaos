@@ -21,6 +21,8 @@ class InputConfigTestCase(unittest.TestCase):
         self.assertEqual(config.input_validation.success_timeout_ms, 8000)
         self.assertEqual(config.zero_system.template_path, "resources/templates/zero_system_entry.png")
         self.assertEqual(config.zero_system.search_region.left, 1020)
+        self.assertEqual(config.zero_system.detect_timeout_ms, 8000)
+        self.assertEqual(config.zero_system.detect_poll_interval_ms, 500)
         self.assertEqual(config.zero_system.success_template_path, "resources/templates/zero_system_page_header.png")
         self.assertEqual(config.zero_system.success_search_region.width, 360)
         self.assertEqual(config.zero_system.success_timeout_ms, 8000)

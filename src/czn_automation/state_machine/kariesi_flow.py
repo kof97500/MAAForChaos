@@ -6,6 +6,7 @@ import time
 
 from czn_automation.recognition.template_match import TemplateMatchResult, TemplateMatcher
 from czn_automation.runtime.context import RunContext
+from czn_automation.waiters.template_waiter import TemplateWaiter
 from czn_automation.window.attach import AttachResult, GameWindowService, WindowInfo
 from czn_automation.window.input import ClickResult, WindowInputService
 from czn_automation.window.screenshot import CaptureResult, WindowScreenshotService
@@ -38,6 +39,7 @@ class KariesiEntryStateMachine:
         self.screenshot_service = WindowScreenshotService(context)
         self.input_service = WindowInputService(context)
         self.matcher = TemplateMatcher()
+        self.template_waiter = TemplateWaiter(context, self.screenshot_service, self.matcher)
 
         self.current_state = KariesiState.ATTACH_WINDOW
         self.failure_reason = ""
@@ -260,54 +262,52 @@ class KariesiEntryStateMachine:
             self.failure_reason = "窗口缺失，无法识别零式系统入口"
             return KariesiState.FAILED
 
-        self.zero_system_capture = self.screenshot_service.capture_named_debug_file(
-            self.window,
-            "before_zero_system_click.bmp",
-        )
-        if not self.zero_system_capture.success or self.zero_system_capture.path is None:
-            self.failure_reason = self.zero_system_capture.summary()
-            self.context.progress.update(
-                stage="按钮识别",
-                step="识别零式系统入口",
-                status="失败",
-                detail=self.failure_reason,
-            )
-            return KariesiState.FAILED
-
         config = self.context.config.zero_system
         template_path = self.context.root_dir / config.template_path
         self.context.progress.update(
             stage="按钮识别",
             step="识别零式系统入口",
             status="进行中",
-            detail=f"template={config.template_path}",
+            detail=(
+                f"template={config.template_path} "
+                f"timeout={config.detect_timeout_ms}ms interval={config.detect_poll_interval_ms}ms"
+            ),
         )
-        match = self.matcher.find_in_image(
-            screenshot_path=self.zero_system_capture.path,
+        wait_result = self.template_waiter.wait_for_template(
+            self.window,
             template_path=template_path,
             search_region=config.search_region,
             threshold=config.match_threshold,
             step=config.search_step,
+            timeout_ms=config.detect_timeout_ms,
+            poll_interval_ms=config.detect_poll_interval_ms,
+            screenshot_prefix="before_zero_system_click",
+            log_prefix="零式系统入口",
         )
-        self.zero_system_match = match
-        if not match.found:
-            self.failure_reason = match.summary()
+        self.zero_system_match = wait_result.match
+        self.zero_system_capture = wait_result.capture
+        if (
+            not wait_result.found
+            or self.zero_system_capture is None
+            or self.zero_system_capture.path is None
+        ):
+            self.failure_reason = wait_result.summary()
             self.context.progress.update(
                 stage="按钮识别",
                 step="识别零式系统入口",
                 status="失败",
-                detail=match.summary(),
+                detail=wait_result.summary(),
             )
-            self.context.logger.warning("零式系统入口识别失败：%s", match.summary())
+            self.context.logger.warning("零式系统入口识别失败：%s", wait_result.summary())
             return KariesiState.FAILED
 
         self.context.progress.update(
             stage="按钮识别",
             step="识别零式系统入口",
             status="成功",
-            detail=match.summary(),
+            detail=wait_result.summary(),
         )
-        self.context.logger.info("零式系统入口识别成功：%s", match.summary())
+        self.context.logger.info("零式系统入口识别成功：%s", wait_result.summary())
         return KariesiState.CLICK_ZERO_SYSTEM_ENTRY
 
     def _click_zero_system_entry(self) -> KariesiState:
@@ -370,12 +370,44 @@ class KariesiEntryStateMachine:
         self.context.logger.warning("零式系统页面验证失败：%s", result.summary())
         return KariesiState.FAILED
 
+    def _wait_for_zero_system_entry(self, template_path) -> TemplateMatchResult:
+        config = self.context.config.zero_system
+        deadline = time.time() + (config.detect_timeout_ms / 1000)
+        attempt = 0
+        last_result = TemplateMatchResult(found=False, reason="尚未开始轮询")
+
+        while time.time() < deadline:
+            attempt += 1
+            filename = f"before_zero_system_click_{attempt:02d}.bmp"
+            capture = self.screenshot_service.capture_named_debug_file(self.window, filename)
+            if not capture.success or capture.path is None:
+                last_result = TemplateMatchResult(found=False, reason=capture.summary())
+                time.sleep(config.detect_poll_interval_ms / 1000)
+                continue
+
+            result = self.matcher.find_in_image(
+                screenshot_path=capture.path,
+                template_path=template_path,
+                search_region=config.search_region,
+                threshold=config.match_threshold,
+                step=config.search_step,
+            )
+            self.context.logger.info("零式系统入口轮询 #%s: %s", attempt, result.summary())
+            if result.found:
+                self.zero_system_capture = capture
+                return result
+
+            last_result = result
+            time.sleep(config.detect_poll_interval_ms / 1000)
+
+        return TemplateMatchResult(
+            found=False,
+            reason=f"等待零式系统入口超时，最后结果：{last_result.summary()}",
+        )
+
     def _wait_for_success_page(self, window: WindowInfo) -> TemplateMatchResult:
         config = self.context.config.input_validation
-        deadline = time.time() + (config.success_timeout_ms / 1000)
-        attempt = 0
         template_path = self.context.root_dir / config.success_template_path
-        last_result = TemplateMatchResult(found=False, reason="尚未开始轮询")
 
         self.context.progress.update(
             stage="结果验证",
@@ -383,41 +415,21 @@ class KariesiEntryStateMachine:
             status="进行中",
             detail=f"timeout={config.success_timeout_ms}ms interval={config.success_poll_interval_ms}ms",
         )
-
-        while time.time() < deadline:
-            attempt += 1
-            filename = f"after_input_click_{attempt:02d}.bmp"
-            capture = self.screenshot_service.capture_named_debug_file(window, filename)
-            if not capture.success or capture.path is None:
-                last_result = TemplateMatchResult(found=False, reason=capture.summary())
-                time.sleep(config.success_poll_interval_ms / 1000)
-                continue
-
-            result = self.matcher.find_in_image(
-                screenshot_path=capture.path,
-                template_path=template_path,
-                search_region=config.success_search_region,
-                threshold=config.success_match_threshold,
-                step=1,
-            )
-            self.context.logger.info("结果验证轮询 #%s: %s", attempt, result.summary())
-            if result.found:
-                return result
-
-            last_result = result
-            time.sleep(config.success_poll_interval_ms / 1000)
-
-        return TemplateMatchResult(
-            found=False,
-            reason=f"等待目标页面超时，最后结果：{last_result.summary()}",
-        )
+        return self.template_waiter.wait_for_template(
+            window,
+            template_path=template_path,
+            search_region=config.success_search_region,
+            threshold=config.success_match_threshold,
+            step=1,
+            timeout_ms=config.success_timeout_ms,
+            poll_interval_ms=config.success_poll_interval_ms,
+            screenshot_prefix="after_input_click",
+            log_prefix="卡厄思结果验证",
+        ).match
 
     def _wait_for_zero_system_page_success(self, window: WindowInfo) -> TemplateMatchResult:
         config = self.context.config.zero_system
-        deadline = time.time() + (config.success_timeout_ms / 1000)
-        attempt = 0
         template_path = self.context.root_dir / config.success_template_path
-        last_result = TemplateMatchResult(found=False, reason="尚未开始轮询")
 
         self.context.progress.update(
             stage="结果验证",
@@ -428,31 +440,14 @@ class KariesiEntryStateMachine:
                 f"interval={config.success_poll_interval_ms}ms"
             ),
         )
-
-        while time.time() < deadline:
-            attempt += 1
-            filename = f"after_zero_system_click_{attempt:02d}.bmp"
-            capture = self.screenshot_service.capture_named_debug_file(window, filename)
-            if not capture.success or capture.path is None:
-                last_result = TemplateMatchResult(found=False, reason=capture.summary())
-                time.sleep(config.success_poll_interval_ms / 1000)
-                continue
-
-            result = self.matcher.find_in_image(
-                screenshot_path=capture.path,
-                template_path=template_path,
-                search_region=config.success_search_region,
-                threshold=config.success_match_threshold,
-                step=1,
-            )
-            self.context.logger.info("零式系统结果验证轮询 #%s: %s", attempt, result.summary())
-            if result.found:
-                return result
-
-            last_result = result
-            time.sleep(config.success_poll_interval_ms / 1000)
-
-        return TemplateMatchResult(
-            found=False,
-            reason=f"等待零式系统页面超时，最后结果：{last_result.summary()}",
-        )
+        return self.template_waiter.wait_for_template(
+            window,
+            template_path=template_path,
+            search_region=config.success_search_region,
+            threshold=config.success_match_threshold,
+            step=1,
+            timeout_ms=config.success_timeout_ms,
+            poll_interval_ms=config.success_poll_interval_ms,
+            screenshot_prefix="after_zero_system_click",
+            log_prefix="零式系统结果验证",
+        ).match

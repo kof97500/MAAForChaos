@@ -51,6 +51,8 @@
     },
     "match_threshold": 25.0,
     "search_step": 2,
+    "detect_timeout_ms": 8000,
+    "detect_poll_interval_ms": 500,
     "post_click_wait_ms": 400,
     "success_template_path": "resources/templates/zero_system_page_header.png",
     "success_search_region": {

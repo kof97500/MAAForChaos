@@ -51,6 +51,8 @@ class ZeroSystemConfig:
     search_region: SearchRegion
     match_threshold: float
     search_step: int
+    detect_timeout_ms: int
+    detect_poll_interval_ms: int
     post_click_wait_ms: int
     success_template_path: str
     success_search_region: SearchRegion
@@ -119,6 +121,8 @@ def load_config(path: Path) -> AppConfig:
             ),
             match_threshold=float(data["zero_system"]["match_threshold"]),
             search_step=int(data["zero_system"]["search_step"]),
+            detect_timeout_ms=int(data["zero_system"]["detect_timeout_ms"]),
+            detect_poll_interval_ms=int(data["zero_system"]["detect_poll_interval_ms"]),
             post_click_wait_ms=int(data["zero_system"]["post_click_wait_ms"]),
             success_template_path=data["zero_system"]["success_template_path"],
             success_search_region=SearchRegion(
