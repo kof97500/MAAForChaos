@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 
 from czn_automation.config import load_config
-from czn_automation.recognition.template_match import TemplateMatcher
+from czn_automation.recognition.template_match import TemplateMatchResult, TemplateMatcher
 from czn_automation.runtime.context import RunContext
 from czn_automation.runtime.dpi import enable_dpi_awareness
 from czn_automation.runtime.logger import setup_logger
@@ -146,27 +146,29 @@ def main() -> int:
 
         context.logger.info("输入验证点击完成：%s", click_result.summary())
         time.sleep(config.input_validation.post_click_wait_ms / 1000)
-        after_capture = screenshot_service.capture_named_debug_file(
-            attach_result.window,
-            "after_input_click.bmp",
+        validation_result = wait_for_success_page(
+            context=context,
+            screenshot_service=screenshot_service,
+            matcher=matcher,
+            window=attach_result.window,
         )
-        if after_capture.success:
+        if validation_result.found:
             context.progress.update(
-                stage="输入验证",
-                step="点击卡厄思图标按钮",
+                stage="结果验证",
+                step="等待卡厄思页面稳定出现",
                 status="成功",
-                detail=f"{click_result.summary()} after={after_capture.summary()}",
+                detail=validation_result.summary(),
             )
-            context.logger.info("输入验证完成：%s after=%s", click_result.summary(), after_capture.summary())
+            context.logger.info("结果验证成功：%s", validation_result.summary())
             return 0
 
         context.progress.update(
-            stage="输入验证",
-            step="点击卡厄思图标按钮",
+            stage="结果验证",
+            step="等待卡厄思页面稳定出现",
             status="失败",
-            detail=after_capture.summary(),
+            detail=validation_result.summary(),
         )
-        context.logger.warning("输入后截图失败：%s", after_capture.summary())
+        context.logger.warning("结果验证失败：%s", validation_result.summary())
         return 1
 
     context.progress.update(
@@ -177,3 +179,51 @@ def main() -> int:
     )
     context.logger.warning("窗口连接流程结束，但未找到目标窗口：%s", attach_result.summary())
     return 1
+
+
+def wait_for_success_page(
+    context: RunContext,
+    screenshot_service: WindowScreenshotService,
+    matcher: TemplateMatcher,
+    window,
+) -> TemplateMatchResult:
+    config = context.config.input_validation
+    deadline = time.time() + (config.success_timeout_ms / 1000)
+    attempt = 0
+    template_path = context.root_dir / config.success_template_path
+    last_result = TemplateMatchResult(found=False, reason="尚未开始轮询")
+
+    context.progress.update(
+        stage="结果验证",
+        step="等待卡厄思页面稳定出现",
+        status="进行中",
+        detail=f"timeout={config.success_timeout_ms}ms interval={config.success_poll_interval_ms}ms",
+    )
+
+    while time.time() < deadline:
+        attempt += 1
+        filename = f"after_input_click_{attempt:02d}.bmp"
+        capture = screenshot_service.capture_named_debug_file(window, filename)
+        if not capture.success:
+            last_result = TemplateMatchResult(found=False, reason=capture.summary())
+            time.sleep(config.success_poll_interval_ms / 1000)
+            continue
+
+        result = matcher.find_in_image(
+            screenshot_path=capture.path,
+            template_path=template_path,
+            search_region=config.success_search_region,
+            threshold=config.success_match_threshold,
+            step=1,
+        )
+        context.logger.info("结果验证轮询 #%s: %s", attempt, result.summary())
+        if result.found:
+            return result
+
+        last_result = result
+        time.sleep(config.success_poll_interval_ms / 1000)
+
+    return TemplateMatchResult(
+        found=False,
+        reason=f"等待目标页面超时，最后结果：{last_result.summary()}",
+    )

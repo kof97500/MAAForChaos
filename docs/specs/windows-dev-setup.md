@@ -103,7 +103,8 @@ python -m czn_automation
 8. 如果连接成功，保存首张窗口截图
 9. 识别 `卡厄思 + 星球` 图标按钮
 10. 对识别结果执行一次点击
-10. 保存点击前后截图
+10. 轮询等待目标页面出现
+11. 保存过渡截图并验证进入结果
 
 当前版本已经接入第一版 Win32 窗口枚举与截图验证能力，适合做以下验证：
 
@@ -112,6 +113,7 @@ python -m czn_automation
 - 是否能识别固定分辨率 `1920x1080`
 - 是否能成功保存窗口客户区截图
 - 是否能识别并点击 `卡厄思 + 星球` 图标
+- 是否能在加载结束后识别到 `卡厄思` 页面
 
 ## 7. 日志位置
 
@@ -156,6 +158,11 @@ python -m czn_automation
 [步骤] 点击卡厄思图标按钮
 [状态] 成功
 [详情] screen=(...)
+
+[阶段] 结果验证
+[步骤] 等待卡厄思页面稳定出现
+[状态] 成功
+[详情] rect=(...)
 ```
 
 ## 9. VS Code 调试
@@ -277,6 +284,7 @@ python -m czn_automation
 3. `截图验证`
 4. `按钮识别`
 5. `输入验证`
+6. `结果验证`
 
 理想情况会看到：
 
@@ -298,6 +306,7 @@ python -m czn_automation
 - 保存首张窗口截图
 - 识别卡厄思图标按钮
 - 点击卡厄思图标按钮
+- 等待卡厄思页面稳定出现
 
 ### 14.2 日志文件
 
@@ -316,6 +325,7 @@ python -m czn_automation
 - 模板识别结果是否成功
 - 按钮中心坐标是多少
 - 点击是否执行成功
+- 是否在超时前识别到目标页头
 
 ### 14.3 截图文件
 
@@ -323,14 +333,16 @@ python -m czn_automation
 
 - [debug/screenshots/last_window_capture.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/last_window_capture.bmp)
 - [debug/screenshots/before_input_click.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/before_input_click.bmp)
-- [debug/screenshots/after_input_click.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/after_input_click.bmp)
+- [debug/screenshots/after_input_click_01.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/after_input_click_01.bmp)
+- [debug/screenshots/after_input_click_02.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/after_input_click_02.bmp)
+- ...
 
 你需要确认：
 
 - 文件是否生成
 - 打开后内容是否真的是游戏窗口客户区
 - 是否存在黑屏、纯白、错位或截到别的窗口的情况
-- 点击前后两张截图是否有符合预期的界面变化
+- 轮询截图中是否出现你提供的目标页面
 
 ## 15. 本轮验收标准
 

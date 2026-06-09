@@ -29,6 +29,16 @@
     },
     "match_threshold": 18.0,
     "search_step": 2,
-    "post_click_wait_ms": 1200
+    "post_click_wait_ms": 400,
+    "success_template_path": "resources/templates/kariesi_page_header.png",
+    "success_search_region": {
+      "left": 0,
+      "top": 0,
+      "width": 360,
+      "height": 120
+    },
+    "success_match_threshold": 20.0,
+    "success_timeout_ms": 8000,
+    "success_poll_interval_ms": 500
   }
 }
