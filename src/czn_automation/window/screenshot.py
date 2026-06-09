@@ -56,13 +56,16 @@ class WindowScreenshotService:
         self.context = context
 
     def capture_to_debug_file(self, window: WindowInfo) -> CaptureResult:
+        return self.capture_named_debug_file(window, "last_window_capture.bmp")
+
+    def capture_named_debug_file(self, window: WindowInfo, filename: str) -> CaptureResult:
         if system() != "Windows":
             return CaptureResult(
                 success=False,
                 reason="当前不是 Windows 环境，无法执行 Win32 窗口截图",
             )
 
-        output_path = self.context.root_dir / "debug" / "screenshots" / "last_window_capture.bmp"
+        output_path = self.context.root_dir / "debug" / "screenshots" / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:

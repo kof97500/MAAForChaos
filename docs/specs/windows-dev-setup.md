@@ -101,6 +101,8 @@ python -m czn_automation
 6. 按标题关键字匹配目标窗口
 7. 校验目标窗口分辨率是否为 `1920x1080`
 8. 如果连接成功，保存首张窗口截图
+9. 对固定客户区坐标执行一次点击
+10. 保存点击前后截图
 
 当前版本已经接入第一版 Win32 窗口枚举与截图验证能力，适合做以下验证：
 
@@ -108,6 +110,7 @@ python -m czn_automation
 - 是否能匹配到标题关键字
 - 是否能识别固定分辨率 `1920x1080`
 - 是否能成功保存窗口客户区截图
+- 是否能对固定坐标稳定发出点击
 
 ## 7. 日志位置
 
@@ -147,6 +150,11 @@ python -m czn_automation
 [步骤] 保存首张窗口截图
 [状态] 成功
 [详情] ...debug/screenshots/last_window_capture.bmp
+
+[阶段] 输入验证
+[步骤] 执行固定坐标点击
+[状态] 成功
+[详情] screen=(...)
 ```
 
 ## 9. VS Code 调试
@@ -216,6 +224,7 @@ Windows 上下一阶段最适合做的是：
 3. 确认客户区分辨率为 `1920x1080`
 4. 保证窗口未最小化
 5. 保证窗口标题中能看到 `卡厄思梦境` 或 `Chaos Zero Nightmare`
+6. 确认中心点附近点击不会造成不可逆损失
 
 ### 13.2 进入项目目录并激活环境
 
@@ -265,6 +274,7 @@ python -m czn_automation
 1. `初始化`
 2. `窗口连接`
 3. `截图验证`
+4. `输入验证`
 
 理想情况会看到：
 
@@ -284,6 +294,7 @@ python -m czn_automation
 - 匹配目标窗口
 - 连接目标窗口
 - 保存首张窗口截图
+- 执行固定坐标点击
 
 ### 14.2 日志文件
 
@@ -299,18 +310,23 @@ python -m czn_automation
 - 最终选中了哪个窗口
 - 是否因为分辨率不符而失败
 - 截图是否保存成功
+- 固定点击坐标是多少
+- 点击是否执行成功
 
 ### 14.3 截图文件
 
 如果连接成功，程序会尝试保存截图到：
 
 - [debug/screenshots/last_window_capture.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/last_window_capture.bmp)
+- [debug/screenshots/before_input_click.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/before_input_click.bmp)
+- [debug/screenshots/after_input_click.bmp](/Users/michael/Documents/MaaLearn/debug/screenshots/after_input_click.bmp)
 
 你需要确认：
 
 - 文件是否生成
 - 打开后内容是否真的是游戏窗口客户区
 - 是否存在黑屏、纯白、错位或截到别的窗口的情况
+- 点击前后两张截图是否有符合预期的界面变化
 
 ## 15. 本轮验收标准
 
@@ -322,6 +338,8 @@ python -m czn_automation
 - 程序确认窗口分辨率为 `1920x1080`
 - 成功生成 `last_window_capture.bmp`
 - 截图内容正确
+- 成功完成一次固定坐标点击
+- `before_input_click.bmp` 与 `after_input_click.bmp` 可用于判断点击是否生效
 
 ### 部分通过
 
@@ -348,3 +366,5 @@ python -m czn_automation
 4. 游戏是否确认是 `1920x1080`
 5. 是否生成了 `last_window_capture.bmp`
 6. 如果生成了，截图内容是否正确
+7. 是否生成了 `before_input_click.bmp` 和 `after_input_click.bmp`
+8. 点击前后截图是否体现出预期变化

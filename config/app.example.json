@@ -18,5 +18,12 @@
   "logging": {
     "level": "INFO",
     "file_path": "debug/logs/app.log"
+  },
+  "input_validation": {
+    "click_point": {
+      "x": 960,
+      "y": 540
+    },
+    "post_click_wait_ms": 1200
   }
 }

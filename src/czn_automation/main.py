@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 from czn_automation.config import load_config
 from czn_automation.runtime.context import RunContext
@@ -8,6 +9,7 @@ from czn_automation.runtime.dpi import enable_dpi_awareness
 from czn_automation.runtime.logger import setup_logger
 from czn_automation.runtime.progress import ProgressReporter
 from czn_automation.window.attach import GameWindowService
+from czn_automation.window.input import WindowInputService
 from czn_automation.window.screenshot import WindowScreenshotService
 
 
@@ -62,15 +64,59 @@ def main() -> int:
                 detail=capture_result.summary(),
             )
             context.logger.info("截图验证完成：%s", capture_result.summary())
+        else:
+            context.progress.update(
+                stage="截图验证",
+                step="保存首张窗口截图",
+                status="失败",
+                detail=capture_result.summary(),
+            )
+            context.logger.warning("截图验证失败：%s", capture_result.summary())
+            return 1
+
+        screenshot_service.capture_named_debug_file(attach_result.window, "before_input_click.bmp")
+        input_service = WindowInputService(context)
+        point = config.input_validation.click_point
+        context.progress.update(
+            stage="输入验证",
+            step="执行固定坐标点击",
+            status="进行中",
+            detail=f"client=({point.x},{point.y})",
+        )
+        click_result = input_service.click_client_point(attach_result.window, point.x, point.y)
+        if not click_result.success:
+            context.progress.update(
+                stage="输入验证",
+                step="执行固定坐标点击",
+                status="失败",
+                detail=click_result.summary(),
+            )
+            context.logger.warning("输入验证失败：%s", click_result.summary())
+            return 1
+
+        context.logger.info("输入验证点击完成：%s", click_result.summary())
+        time.sleep(config.input_validation.post_click_wait_ms / 1000)
+        after_capture = screenshot_service.capture_named_debug_file(
+            attach_result.window,
+            "after_input_click.bmp",
+        )
+        if after_capture.success:
+            context.progress.update(
+                stage="输入验证",
+                step="执行固定坐标点击",
+                status="成功",
+                detail=f"{click_result.summary()} after={after_capture.summary()}",
+            )
+            context.logger.info("输入验证完成：%s after=%s", click_result.summary(), after_capture.summary())
             return 0
 
         context.progress.update(
-            stage="截图验证",
-            step="保存首张窗口截图",
+            stage="输入验证",
+            step="执行固定坐标点击",
             status="失败",
-            detail=capture_result.summary(),
+            detail=after_capture.summary(),
         )
-        context.logger.warning("截图验证失败：%s", capture_result.summary())
+        context.logger.warning("输入后截图失败：%s", after_capture.summary())
         return 1
 
     context.progress.update(

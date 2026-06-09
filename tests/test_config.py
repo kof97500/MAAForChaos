@@ -13,3 +13,5 @@ class ConfigTestCase(unittest.TestCase):
         self.assertTrue(config.game_window.title_keywords)
         self.assertEqual(config.game_window.supported_resolutions[0].width, 1920)
         self.assertEqual(config.game_window.supported_resolutions[0].height, 1080)
+        self.assertEqual(config.input_validation.click_point.x, 960)
+        self.assertEqual(config.input_validation.click_point.y, 540)

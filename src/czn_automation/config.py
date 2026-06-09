@@ -24,11 +24,24 @@ class LoggingConfig:
 
 
 @dataclass
+class ClickPoint:
+    x: int
+    y: int
+
+
+@dataclass
+class InputValidationConfig:
+    click_point: ClickPoint
+    post_click_wait_ms: int
+
+
+@dataclass
 class AppConfig:
     name: str
     environment: str
     game_window: GameWindowConfig
     logging: LoggingConfig
+    input_validation: InputValidationConfig
 
 
 def load_config(path: Path) -> AppConfig:
@@ -48,5 +61,12 @@ def load_config(path: Path) -> AppConfig:
         logging=LoggingConfig(
             level=data["logging"]["level"],
             file_path=data["logging"]["file_path"],
+        ),
+        input_validation=InputValidationConfig(
+            click_point=ClickPoint(
+                x=data["input_validation"]["click_point"]["x"],
+                y=data["input_validation"]["click_point"]["y"],
+            ),
+            post_click_wait_ms=data["input_validation"]["post_click_wait_ms"],
         ),
     )
