@@ -42,6 +42,14 @@ PYTHONPATH=src python3 -m czn_automation
 PYTHONPATH=src python3 -m czn_automation.event_probe
 ```
 
+实时模式下，工具会：
+
+1. 连接当前游戏窗口
+2. 截图
+3. 点击左侧事件信息按钮
+4. 轮询等待事件详情展开
+5. 分析事件名称、选项框和选项内容
+
 对指定截图做离线检测：
 
 ```bash
@@ -52,6 +60,13 @@ PYTHONPATH=src python3 -m czn_automation.event_probe --image /path/to/event.png
 
 - `debug/events/event_probe_result.json`
 - `debug/events/options/option_*.png`
+
+如果希望事件检测工具直接输出 `事件名称 / 选项标题 / 选项正文`，还需要在系统里安装：
+
+- `Tesseract OCR`
+- 中文语言包 `chi_sim`
+
+仅安装 Python 依赖还不够，因为真正的文字识别仍依赖本机的 `tesseract` 可执行程序。
 
 ## Windows 调试
 

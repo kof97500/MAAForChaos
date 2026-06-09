@@ -281,12 +281,52 @@ python -m czn_automation.event_probe --image C:\path\to\event.png
 - 左侧事件信息按钮的候选区域
 - 每个选项框的裁切结果
 
+如果直接连游戏窗口运行，工具会按下面的顺序执行：
+
+1. 连接当前游戏窗口
+2. 保存点击前截图
+3. 点击左侧事件信息按钮
+4. 轮询等待事件详情展开
+5. 保存点击后截图
+6. 输出事件检测结果
+
 调试产物会保存到：
 
 - `debug/events/event_probe_result.json`
 - `debug/events/options/option_1.png`
 - `debug/events/options/option_2.png`
 - `debug/events/options/option_3.png`
+
+### 13.5 事件页 OCR 额外依赖
+
+如果你希望事件检测工具直接识别：
+
+- 事件名称
+- 选项标题
+- 选项正文
+
+除了执行：
+
+```powershell
+pip install -e .
+```
+
+还需要在 Windows 上额外安装：
+
+- `Tesseract OCR`
+- 中文语言包 `chi_sim`
+
+说明：
+
+- `pip install -e .` 会安装 Python 侧依赖 `pytesseract`
+- 但 `pytesseract` 本身只是 Python 封装
+- 真正执行 OCR 的仍然是系统里的 `tesseract.exe`
+
+如果系统里没有 `tesseract`，事件检测工具仍然可以运行，但结果里会表现为：
+
+- `ocr_available = false`
+- 只输出事件框数量、按钮位置和裁切图片
+- 不会输出事件名称和选项文字内容
 
 ### 13.4 启动验证程序
 

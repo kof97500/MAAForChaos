@@ -12,7 +12,8 @@ authors = [
   { name = "Michael" }
 ]
 dependencies = [
-  "Pillow>=10.0.0"
+  "Pillow>=10.0.0",
+  "pytesseract>=0.3.10"
 ]
 
 [tool.setuptools]
