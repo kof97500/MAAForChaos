@@ -608,43 +608,31 @@ class KariesiEntryStateMachine:
 
     def _wait_for_roguelike_entry(self) -> KariesiState:
         config = self.context.config.team_setup
-        if self.window is None:
-            self.failure_reason = "窗口缺失，无法等待进入肉鸽"
-            return KariesiState.FAILED
-
-        self.context.progress.update(
+        result = self._wait_for_template(
             stage="结果验证",
-            step="等待离开配置队伍页面",
-            status="进行中",
-            detail=(
-                f"timeout={config.transition_timeout_ms}ms "
-                f"interval={config.transition_poll_interval_ms}ms"
-            ),
-        )
-        result = self.template_waiter.wait_for_template_to_disappear(
-            self.window,
-            template_path=self.context.root_dir / config.page_template_path,
-            search_region=config.page_search_region,
-            threshold=config.page_match_threshold,
-            step=1,
+            step="等待肉鸽入口界面稳定出现",
+            template_path=self.context.root_dir / config.success_template_path,
+            search_region=config.success_search_region,
+            threshold=config.success_match_threshold,
+            step_size=1,
             timeout_ms=config.transition_timeout_ms,
             poll_interval_ms=config.transition_poll_interval_ms,
             screenshot_prefix="after_team_setup_enter_click",
-            log_prefix="进入肉鸽验证",
+            log_prefix="肉鸽入口验证",
         )
         if not result.found:
             return self._fail_with_progress(
                 stage="结果验证",
-                step="等待离开配置队伍页面",
+                step="等待肉鸽入口界面稳定出现",
                 reason=result.summary(),
             )
 
         self.screenshot_service.capture_named_debug_file(self.window, "roguelike_entry_ready.bmp")
         self.context.progress.update(
             stage="结果验证",
-            step="等待离开配置队伍页面",
+            step="等待肉鸽入口界面稳定出现",
             status="成功",
-            detail="配置队伍页头已消失，认为已进入肉鸽流程",
+            detail=result.summary(),
         )
         return KariesiState.SUCCESS
 

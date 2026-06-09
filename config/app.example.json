@@ -126,6 +126,14 @@
     "enter_button_match_threshold": 25.0,
     "enter_button_search_step": 2,
     "post_click_wait_ms": 400,
+    "success_template_path": "resources/templates/roguelike_entry_top_right.png",
+    "success_search_region": {
+      "left": 1500,
+      "top": 0,
+      "width": 420,
+      "height": 140
+    },
+    "success_match_threshold": 20.0,
     "transition_timeout_ms": 8000,
     "transition_poll_interval_ms": 500
   }

@@ -32,4 +32,6 @@ class InputConfigTestCase(unittest.TestCase):
         self.assertEqual(config.codex_flow.enter_button_template_path, "resources/templates/codex_enter_button.png")
         self.assertEqual(config.team_setup.page_template_path, "resources/templates/team_config_page_header.png")
         self.assertEqual(config.team_setup.enter_button_template_path, "resources/templates/team_config_enter_button.png")
+        self.assertEqual(config.team_setup.success_template_path, "resources/templates/roguelike_entry_top_right.png")
+        self.assertEqual(config.team_setup.success_search_region.left, 1500)
         self.assertEqual(config.team_setup.transition_timeout_ms, 8000)

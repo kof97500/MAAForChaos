@@ -32,6 +32,27 @@ python3 -m czn_automation
 PYTHONPATH=src python3 -m czn_automation
 ```
 
+## 事件检测工具
+
+当前仓库已经提供一个可单独运行的事件页检测入口，便于针对单个事件页面做验证。
+
+直接检测当前游戏窗口：
+
+```bash
+PYTHONPATH=src python3 -m czn_automation.event_probe
+```
+
+对指定截图做离线检测：
+
+```bash
+PYTHONPATH=src python3 -m czn_automation.event_probe --image /path/to/event.png
+```
+
+检测结果会输出到：
+
+- `debug/events/event_probe_result.json`
+- `debug/events/options/option_*.png`
+
 ## Windows 调试
 
 Windows 本地运行与调试说明见：

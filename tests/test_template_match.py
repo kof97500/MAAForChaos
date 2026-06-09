@@ -6,6 +6,10 @@ from czn_automation.recognition.template_match import TemplateMatcher
 
 
 class TemplateMatcherTestCase(unittest.TestCase):
+    def _require_file(self, path: Path) -> None:
+        if not path.exists():
+            self.skipTest(f"参考截图不存在：{path}")
+
     def test_match_kariesi_template_in_reference_image(self) -> None:
         root_dir = Path(__file__).resolve().parents[1]
         matcher = TemplateMatcher()
@@ -25,12 +29,14 @@ class TemplateMatcherTestCase(unittest.TestCase):
     def test_match_kariesi_page_header_template(self) -> None:
         root_dir = Path(__file__).resolve().parents[1]
         matcher = TemplateMatcher()
+        screenshot = Path(
+            "/Users/michael/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/"
+            "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
+            "752cddee3f7ca6066d8409c03117e5a6.jpg"
+        )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
-            screenshot_path=Path(
-                "/Users/michael/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/"
-                "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
-                "752cddee3f7ca6066d8409c03117e5a6.jpg"
-            ),
+            screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "kariesi_page_header.png",
             search_region=SearchRegion(left=0, top=0, width=360, height=120),
             threshold=20.0,
@@ -50,6 +56,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "752cddee3f7ca6066d8409c03117e5a6.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "zero_system_entry.png",
@@ -71,6 +78,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "2b944e74ac966397c53494f2b934f79c.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "zero_system_page_header.png",
@@ -92,6 +100,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "2b944e74ac966397c53494f2b934f79c.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "codex_button.png",
@@ -113,6 +122,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "171c6dc640f3340cebb24ea74a9525ab.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "first_codex_entry.png",
@@ -134,6 +144,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "171c6dc640f3340cebb24ea74a9525ab.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "codex_enter_button.png",
@@ -155,6 +166,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "4831467a0e74eeb750d4a53873a94868.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "team_config_page_header.png",
@@ -176,6 +188,7 @@ class TemplateMatcherTestCase(unittest.TestCase):
             "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
             "4831467a0e74eeb750d4a53873a94868.jpg"
         )
+        self._require_file(screenshot)
         result = matcher.find_in_image(
             screenshot_path=screenshot,
             template_path=root_dir / "resources" / "templates" / "team_config_enter_button.png",
@@ -188,3 +201,25 @@ class TemplateMatcherTestCase(unittest.TestCase):
         self.assertLessEqual(result.score, 25.0)
         self.assertEqual(result.left, 1535)
         self.assertEqual(result.top, 925)
+
+    def test_match_roguelike_entry_top_right_template(self) -> None:
+        root_dir = Path(__file__).resolve().parents[1]
+        matcher = TemplateMatcher()
+        screenshot = Path(
+            "/Users/michael/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/"
+            "michael-lyr_3e43/temp/RWTemp/2026-06/52a1ab9b3472a7f71ab346a045b579f6/"
+            "34b65b63ff127fab7ef222777475a40b.png"
+        )
+        self._require_file(screenshot)
+        result = matcher.find_in_image(
+            screenshot_path=screenshot,
+            template_path=root_dir / "resources" / "templates" / "roguelike_entry_top_right.png",
+            search_region=SearchRegion(left=1500, top=0, width=420, height=140),
+            threshold=20.0,
+            step=1,
+        )
+
+        self.assertTrue(result.found, result.summary())
+        self.assertLessEqual(result.score, 1.0)
+        self.assertEqual(result.left, 1640)
+        self.assertEqual(result.top, 8)

@@ -95,6 +95,9 @@ class TeamSetupConfig:
     enter_button_match_threshold: float
     enter_button_search_step: int
     post_click_wait_ms: int
+    success_template_path: str
+    success_search_region: SearchRegion
+    success_match_threshold: float
     transition_timeout_ms: int
     transition_poll_interval_ms: int
 
@@ -236,6 +239,14 @@ def load_config(path: Path) -> AppConfig:
             enter_button_match_threshold=float(data["team_setup"]["enter_button_match_threshold"]),
             enter_button_search_step=int(data["team_setup"]["enter_button_search_step"]),
             post_click_wait_ms=int(data["team_setup"]["post_click_wait_ms"]),
+            success_template_path=data["team_setup"]["success_template_path"],
+            success_search_region=SearchRegion(
+                left=data["team_setup"]["success_search_region"]["left"],
+                top=data["team_setup"]["success_search_region"]["top"],
+                width=data["team_setup"]["success_search_region"]["width"],
+                height=data["team_setup"]["success_search_region"]["height"],
+            ),
+            success_match_threshold=float(data["team_setup"]["success_match_threshold"]),
             transition_timeout_ms=int(data["team_setup"]["transition_timeout_ms"]),
             transition_poll_interval_ms=int(data["team_setup"]["transition_poll_interval_ms"]),
         ),

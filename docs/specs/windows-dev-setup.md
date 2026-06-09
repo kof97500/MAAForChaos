@@ -258,6 +258,36 @@ pip install -e .
 
 如果只是同步了最新代码，也建议重新执行一次，确保新增依赖和本地入口保持一致。
 
+### 13.4 单独运行事件检测工具
+
+如果你想只针对当前事件页做检测，而不跑完整主流程，可以直接运行：
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m czn_automation.event_probe
+```
+
+如果你想针对一张事件截图做离线分析，可以运行：
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m czn_automation.event_probe --image C:\path\to\event.png
+```
+
+当前事件检测工具会输出：
+
+- 是否识别为事件页
+- 当前识别到的选项框数量
+- 左侧事件信息按钮的候选区域
+- 每个选项框的裁切结果
+
+调试产物会保存到：
+
+- `debug/events/event_probe_result.json`
+- `debug/events/options/option_1.png`
+- `debug/events/options/option_2.png`
+- `debug/events/options/option_3.png`
+
 ### 13.4 启动验证程序
 
 推荐方式一：
