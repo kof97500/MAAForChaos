@@ -13,5 +13,6 @@ class ConfigTestCase(unittest.TestCase):
         self.assertTrue(config.game_window.title_keywords)
         self.assertEqual(config.game_window.supported_resolutions[0].width, 1920)
         self.assertEqual(config.game_window.supported_resolutions[0].height, 1080)
-        self.assertEqual(config.input_validation.click_point.x, 1840)
-        self.assertEqual(config.input_validation.click_point.y, 54)
+        self.assertEqual(config.input_validation.template_path, "resources/templates/kariesi_icon.png")
+        self.assertEqual(config.input_validation.search_region.left, 1660)
+        self.assertEqual(config.input_validation.search_region.width, 220)

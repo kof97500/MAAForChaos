@@ -24,14 +24,19 @@ class LoggingConfig:
 
 
 @dataclass
-class ClickPoint:
-    x: int
-    y: int
+class SearchRegion:
+    left: int
+    top: int
+    width: int
+    height: int
 
 
 @dataclass
 class InputValidationConfig:
-    click_point: ClickPoint
+    template_path: str
+    search_region: SearchRegion
+    match_threshold: float
+    search_step: int
     post_click_wait_ms: int
 
 
@@ -63,10 +68,15 @@ def load_config(path: Path) -> AppConfig:
             file_path=data["logging"]["file_path"],
         ),
         input_validation=InputValidationConfig(
-            click_point=ClickPoint(
-                x=data["input_validation"]["click_point"]["x"],
-                y=data["input_validation"]["click_point"]["y"],
+            template_path=data["input_validation"]["template_path"],
+            search_region=SearchRegion(
+                left=data["input_validation"]["search_region"]["left"],
+                top=data["input_validation"]["search_region"]["top"],
+                width=data["input_validation"]["search_region"]["width"],
+                height=data["input_validation"]["search_region"]["height"],
             ),
+            match_threshold=float(data["input_validation"]["match_threshold"]),
+            search_step=int(data["input_validation"]["search_step"]),
             post_click_wait_ms=data["input_validation"]["post_click_wait_ms"],
         ),
     )

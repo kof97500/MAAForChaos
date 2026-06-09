@@ -10,5 +10,9 @@ class InputConfigTestCase(unittest.TestCase):
         config = load_config(root_dir / "config" / "app.example.json")
 
         self.assertEqual(config.input_validation.post_click_wait_ms, 1200)
-        self.assertEqual(config.input_validation.click_point.x, 1840)
-        self.assertEqual(config.input_validation.click_point.y, 54)
+        self.assertEqual(config.input_validation.template_path, "resources/templates/kariesi_icon.png")
+        self.assertEqual(config.input_validation.search_region.left, 1660)
+        self.assertEqual(config.input_validation.search_region.top, 410)
+        self.assertEqual(config.input_validation.search_region.width, 220)
+        self.assertEqual(config.input_validation.search_region.height, 140)
+        self.assertEqual(config.input_validation.search_step, 2)

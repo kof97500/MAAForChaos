@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 
 from czn_automation.config import load_config
+from czn_automation.recognition.template_match import TemplateMatcher
 from czn_automation.runtime.context import RunContext
 from czn_automation.runtime.dpi import enable_dpi_awareness
 from czn_automation.runtime.logger import setup_logger
@@ -74,20 +75,69 @@ def main() -> int:
             context.logger.warning("截图验证失败：%s", capture_result.summary())
             return 1
 
-        screenshot_service.capture_named_debug_file(attach_result.window, "before_input_click.bmp")
+        before_capture = screenshot_service.capture_named_debug_file(
+            attach_result.window,
+            "before_input_click.bmp",
+        )
+        if not before_capture.success:
+            context.progress.update(
+                stage="按钮识别",
+                step="保存点击前截图",
+                status="失败",
+                detail=before_capture.summary(),
+            )
+            context.logger.warning("保存点击前截图失败：%s", before_capture.summary())
+            return 1
+
+        matcher = TemplateMatcher()
+        template_path = root_dir / config.input_validation.template_path
+        context.progress.update(
+            stage="按钮识别",
+            step="识别卡厄思图标按钮",
+            status="进行中",
+            detail=f"template={config.input_validation.template_path}",
+        )
+        match = matcher.find_in_image(
+            screenshot_path=before_capture.path,
+            template_path=template_path,
+            search_region=config.input_validation.search_region,
+            threshold=config.input_validation.match_threshold,
+            step=config.input_validation.search_step,
+        )
+        if not match.found:
+            context.progress.update(
+                stage="按钮识别",
+                step="识别卡厄思图标按钮",
+                status="失败",
+                detail=match.summary(),
+            )
+            context.logger.warning("按钮识别失败：%s", match.summary())
+            return 1
+
+        context.progress.update(
+            stage="按钮识别",
+            step="识别卡厄思图标按钮",
+            status="成功",
+            detail=match.summary(),
+        )
+        context.logger.info("按钮识别成功：%s", match.summary())
+
         input_service = WindowInputService(context)
-        point = config.input_validation.click_point
         context.progress.update(
             stage="输入验证",
-            step="执行固定坐标点击",
+            step="点击卡厄思图标按钮",
             status="进行中",
-            detail=f"client=({point.x},{point.y})",
+            detail=f"client=({match.center_x},{match.center_y}) score={match.score:.2f}",
         )
-        click_result = input_service.click_client_point(attach_result.window, point.x, point.y)
+        click_result = input_service.click_client_point(
+            attach_result.window,
+            match.center_x,
+            match.center_y,
+        )
         if not click_result.success:
             context.progress.update(
                 stage="输入验证",
-                step="执行固定坐标点击",
+                step="点击卡厄思图标按钮",
                 status="失败",
                 detail=click_result.summary(),
             )
@@ -103,7 +153,7 @@ def main() -> int:
         if after_capture.success:
             context.progress.update(
                 stage="输入验证",
-                step="执行固定坐标点击",
+                step="点击卡厄思图标按钮",
                 status="成功",
                 detail=f"{click_result.summary()} after={after_capture.summary()}",
             )
@@ -112,7 +162,7 @@ def main() -> int:
 
         context.progress.update(
             stage="输入验证",
-            step="执行固定坐标点击",
+            step="点击卡厄思图标按钮",
             status="失败",
             detail=after_capture.summary(),
         )

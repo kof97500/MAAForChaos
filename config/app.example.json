@@ -20,10 +20,15 @@
     "file_path": "debug/logs/app.log"
   },
   "input_validation": {
-    "click_point": {
-      "x": 1840,
-      "y": 54
+    "template_path": "resources/templates/kariesi_icon.png",
+    "search_region": {
+      "left": 1660,
+      "top": 410,
+      "width": 220,
+      "height": 140
     },
+    "match_threshold": 18.0,
+    "search_step": 2,
     "post_click_wait_ms": 1200
   }
 }
