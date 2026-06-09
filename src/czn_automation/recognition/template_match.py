@@ -36,6 +36,9 @@ class TemplateMatchResult:
 
 
 class TemplateMatcher:
+    def __init__(self, foreground_threshold: int = 72) -> None:
+        self.foreground_threshold = foreground_threshold
+
     def find_in_image(
         self,
         screenshot_path: Path,
@@ -46,6 +49,7 @@ class TemplateMatcher:
     ) -> TemplateMatchResult:
         screenshot = Image.open(screenshot_path).convert("L")
         template = Image.open(template_path).convert("L")
+        template_mask = self._build_template_mask(template)
 
         region = screenshot.crop(
             (
@@ -62,11 +66,25 @@ class TemplateMatcher:
                 reason="模板尺寸大于搜索区域，无法执行匹配",
             )
 
-        best = self._scan_region(region, template, search_region.left, search_region.top, step)
+        best = self._scan_region(
+            region,
+            template,
+            template_mask,
+            search_region.left,
+            search_region.top,
+            step,
+        )
         if best is None:
             return TemplateMatchResult(found=False, reason="未得到任何匹配结果")
 
-        refined = self._refine_best_match(region, template, search_region.left, search_region.top, best)
+        refined = self._refine_best_match(
+            region,
+            template,
+            template_mask,
+            search_region.left,
+            search_region.top,
+            best,
+        )
         if refined.score > threshold:
             refined.found = False
             refined.reason = f"匹配分数超过阈值: score={refined.score:.2f} threshold={threshold:.2f}"
@@ -76,6 +94,7 @@ class TemplateMatcher:
         self,
         region: Image.Image,
         template: Image.Image,
+        template_mask: Image.Image,
         offset_left: int,
         offset_top: int,
         step: int,
@@ -88,7 +107,11 @@ class TemplateMatcher:
 
         for top in range(0, max_y + 1, max(step, 1)):
             for left in range(0, max_x + 1, max(step, 1)):
-                score = self._score(region.crop((left, top, left + template.width, top + template.height)), template)
+                score = self._score(
+                    region.crop((left, top, left + template.width, top + template.height)),
+                    template,
+                    template_mask,
+                )
                 if best_score is None or score < best_score:
                     best_score = score
                     best_left = left
@@ -110,6 +133,7 @@ class TemplateMatcher:
         self,
         region: Image.Image,
         template: Image.Image,
+        template_mask: Image.Image,
         offset_left: int,
         offset_top: int,
         coarse: TemplateMatchResult,
@@ -125,7 +149,11 @@ class TemplateMatcher:
 
         for top in range(start_top, end_top + 1):
             for left in range(start_left, end_left + 1):
-                score = self._score(region.crop((left, top, left + template.width, top + template.height)), template)
+                score = self._score(
+                    region.crop((left, top, left + template.width, top + template.height)),
+                    template,
+                    template_mask,
+                )
                 if score < best.score:
                     best = TemplateMatchResult(
                         found=True,
@@ -137,6 +165,14 @@ class TemplateMatcher:
                     )
         return best
 
-    def _score(self, image_a: Image.Image, image_b: Image.Image) -> float:
+    def _score(self, image_a: Image.Image, image_b: Image.Image, mask: Image.Image) -> float:
         diff = ImageChops.difference(image_a, image_b)
-        return float(ImageStat.Stat(diff).mean[0])
+        if mask.getbbox() is None:
+            return float(ImageStat.Stat(diff).mean[0])
+        return float(ImageStat.Stat(diff, mask=mask).mean[0])
+
+    def _build_template_mask(self, template: Image.Image) -> Image.Image:
+        return template.point(
+            lambda pixel: 255 if pixel >= self.foreground_threshold else 0,
+            mode="L",
+        )

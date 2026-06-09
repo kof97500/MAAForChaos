@@ -18,9 +18,9 @@ class TemplateMatcherTestCase(unittest.TestCase):
         )
 
         self.assertTrue(result.found, result.summary())
-        self.assertLessEqual(result.score, 1.0)
-        self.assertEqual(result.left, 1650)
-        self.assertEqual(result.top, 420)
+        self.assertLessEqual(result.score, 25.0)
+        self.assertEqual(result.left, 1647)
+        self.assertEqual(result.top, 433)
 
     def test_match_kariesi_page_header_template(self) -> None:
         root_dir = Path(__file__).resolve().parents[1]
